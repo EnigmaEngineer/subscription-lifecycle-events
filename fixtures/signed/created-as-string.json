@@ -1,0 +1,11 @@
+{
+  "body_b64": "eyJpZCI6ImV2dF9jcmVhdGVkX3N0ciIsInR5cGUiOiJjdXN0b21lci5zdWJzY3JpcHRpb24uY3JlYXRlZCIsImNyZWF0ZWQiOiIxNzYzMDAwMDAwIn0=",
+  "expect": {
+    "outcome": "unparseable",
+    "status": 400
+  },
+  "header": "t=1762999995,v1=9b7c30f5ef18d55993528653b546d1fbff26c202e4daf7d566547f0316bf28b4",
+  "name": "created-as-string",
+  "note": "a timestamp sent as a string would sort as text later on",
+  "now": 1763000000
+}

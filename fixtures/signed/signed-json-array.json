@@ -1,0 +1,11 @@
+{
+  "body_b64": "WzEsMiwzXQ==",
+  "expect": {
+    "outcome": "unparseable",
+    "status": 400
+  },
+  "header": "t=1762999995,v1=356d65ebef9a120343a2079131bb821f00bc529d72363df72c5fad911c444b41",
+  "name": "signed-json-array",
+  "note": "valid json that is not an event envelope",
+  "now": 1763000000
+}

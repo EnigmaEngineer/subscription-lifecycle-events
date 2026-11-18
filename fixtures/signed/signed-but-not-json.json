@@ -1,0 +1,11 @@
+{
+  "body_b64": "//4gbm90IGpzb24gYXQgYWxs",
+  "expect": {
+    "outcome": "unparseable",
+    "status": 400
+  },
+  "header": "t=1762999995,v1=8944ec55cfca822fea6769e2941949562344225ce61205123dcc0682d180307d",
+  "name": "signed-but-not-json",
+  "note": "verifies and then does not decode. the sender is real and the bytes are not usable",
+  "now": 1763000000
+}

@@ -1,0 +1,11 @@
+{
+  "body_b64": "eyJpZCI6ImV2dF9ub190eXBlIiwiY3JlYXRlZCI6MTc2Mjk5OTk5NX0=",
+  "expect": {
+    "outcome": "unparseable",
+    "status": 400
+  },
+  "header": "t=1762999995,v1=926fb9dce99dfe2ff500aff09d7cbe79310dd289c50d1d451803a46db37f10e9",
+  "name": "envelope-missing-type",
+  "note": "the handler reads four fields and this one is absent",
+  "now": 1763000000
+}

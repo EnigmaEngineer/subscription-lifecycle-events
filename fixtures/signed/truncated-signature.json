@@ -1,0 +1,11 @@
+{
+  "body_b64": "eyJhcGlfdmVyc2lvbiI6IjIwMjQtMDYtMjAiLCJjcmVhdGVkIjoxNzYyOTk5OTk1LCJkYXRhIjp7Im9iamVjdCI6eyJpZCI6InN1Yl9maXh0dXJlIiwib2JqZWN0Ijoic3Vic2NyaXB0aW9uIn19LCJpZCI6ImV2dF9maXh0dXJlX2dvb2QiLCJsaXZlbW9kZSI6ZmFsc2UsIm9iamVjdCI6ImV2ZW50IiwicGVuZGluZ193ZWJob29rcyI6MSwicmVxdWVzdCI6eyJpZCI6bnVsbCwiaWRlbXBvdGVuY3lfa2V5IjpudWxsfSwidHlwZSI6ImN1c3RvbWVyLnN1YnNjcmlwdGlvbi5jcmVhdGVkIn0=",
+  "expect": {
+    "outcome": "rejected",
+    "status": 400
+  },
+  "header": "t=1762999995,v1=ec6fce40f3af9101f94cfd6e8c812171",
+  "name": "truncated-signature",
+  "note": "a prefix of the right digest. compare_digest refuses it on length",
+  "now": 1763000000
+}

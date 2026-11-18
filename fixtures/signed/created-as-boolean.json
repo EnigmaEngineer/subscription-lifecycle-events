@@ -1,0 +1,11 @@
+{
+  "body_b64": "eyJpZCI6ImV2dF9jcmVhdGVkX2Jvb2wiLCJ0eXBlIjoiY3VzdG9tZXIuc3Vic2NyaXB0aW9uLmNyZWF0ZWQiLCJjcmVhdGVkIjp0cnVlfQ==",
+  "expect": {
+    "outcome": "unparseable",
+    "status": 400
+  },
+  "header": "t=1762999995,v1=95870ebb58db56a7a990d8ae85625df299366afe84b1b48f125e1eac986eb580",
+  "name": "created-as-boolean",
+  "note": "True is an int in python and the shape check says so explicitly",
+  "now": 1763000000
+}

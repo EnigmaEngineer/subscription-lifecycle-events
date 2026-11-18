@@ -1,0 +1,11 @@
+{
+  "body_b64": "eyJhcGlfdmVyc2lvbiI6IjIwMjQtMDYtMjAiLCJjcmVhdGVkIjoxNzYyOTk5OTk1LCJkYXRhIjp7Im9iamVjdCI6eyJpZCI6InN1Yl9maXh0dXJlIiwib2JqZWN0Ijoic3Vic2NyaXB0aW9uIn19LCJpZCI6ImV2dF91bmhhbmRsZWQiLCJsaXZlbW9kZSI6ZmFsc2UsIm9iamVjdCI6ImV2ZW50IiwicGVuZGluZ193ZWJob29rcyI6MSwicmVxdWVzdCI6eyJpZCI6bnVsbCwiaWRlbXBvdGVuY3lfa2V5IjpudWxsfSwidHlwZSI6ImNoYXJnZS5yZWZ1bmRlZCJ9",
+  "expect": {
+    "outcome": "ignored",
+    "status": 200
+  },
+  "header": "t=1762999995,v1=fd1974925bbc3c2812381ad87acc86a1ea67f3516c66c5839f1e239d0ee62c96",
+  "name": "unhandled-event-type",
+  "note": "signed and real and not a subscription event. acknowledged so it stops being retried",
+  "now": 1763000000
+}
