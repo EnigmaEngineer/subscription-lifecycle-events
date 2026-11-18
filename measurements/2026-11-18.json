@@ -1,0 +1,62 @@
+{
+  "determinism": {
+    "clean_reproduces": true,
+    "clean_sha256": "6608969371b04ffd403c308860a72c9194b85f5490913c2fdb3c20143afbf698",
+    "wire_reproduces": true,
+    "wire_sha256": "f5d48d41b03316da152c041d04790dbab8c6bdab07728cc90d6ceda122592293"
+  },
+  "fixtures": {
+    "fixtures": 23,
+    "handler_matches_expectation": 23,
+    "outcomes": {
+      "accepted": 5,
+      "ignored": 1,
+      "rejected": 12,
+      "unparseable": 5
+    },
+    "shared_endpoint": {
+      "accepted": 1,
+      "duplicate": 4,
+      "stored_events": 1
+    },
+    "statuses": {
+      "200": 6,
+      "400": 17
+    }
+  },
+  "generated_by": "scripts/measure.py",
+  "python": "3.10.12",
+  "replay": {
+    "accepted": 1501,
+    "clean_events": 1501,
+    "conflict": 0,
+    "delivery_total": 1627,
+    "displacement": {
+      "duplicates": 126,
+      "events": 1501,
+      "rank_max_displacement": 17,
+      "rank_mean_displacement_x1000": 5943,
+      "rank_moved": 1434,
+      "raw_max_displacement": 135
+    },
+    "duplicate": 126,
+    "rejected": 0,
+    "stored_events": 1501,
+    "ties": {
+      "events_in_ties": 146,
+      "subscription_seconds": 1428,
+      "tied_seconds": 73,
+      "widest_tie": 2
+    },
+    "types": {
+      "customer.subscription.created": 200,
+      "customer.subscription.deleted": 34,
+      "customer.subscription.paused": 96,
+      "customer.subscription.resumed": 96,
+      "customer.subscription.updated": 275,
+      "invoice.payment_failed": 73,
+      "invoice.payment_succeeded": 727
+    },
+    "wire_deliveries": 1627
+  }
+}
