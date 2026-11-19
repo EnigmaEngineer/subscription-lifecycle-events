@@ -64,6 +64,35 @@ def test_a_clock_ahead_of_ours_is_refused_too():
     assert exc.value.reason == "timestamp is in the future"
 
 
+def test_the_future_side_of_the_window_is_inclusive_too():
+    """The mirror of the test above, and it was missing.
+
+    A mutation pass on 2026-11-19 moved `age < -tolerance` to `age <=
+    -tolerance` and the whole suite still passed. The past boundary was graded
+    at exactly 300 seconds and the future boundary was only ever checked at
+    900, which is nowhere near the line the code draws. A sender whose clock
+    sits exactly 300 seconds ahead was accepted or refused on an untested
+    branch.
+    """
+    body = b'{"id":"evt_x"}'
+    header = signature.sign(body, SECRET, 1763000300)
+
+    assert signature.verify(body, header, SECRET, now=1763000000, tolerance=300)
+
+    one_second_further = signature.sign(body, SECRET, 1763000301)
+    with pytest.raises(signature.SignatureError) as exc:
+        signature.verify(body, one_second_further, SECRET, now=1763000000, tolerance=300)
+    assert exc.value.reason == "timestamp is in the future"
+
+
+def test_a_parsed_header_cannot_be_edited_after_it_is_parsed():
+    """It is the only object here that crosses from untrusted bytes to a decision."""
+    header = signature.sign(b'{"id":"evt_x"}', SECRET, 1763000000)
+    parsed = signature.parse_header(header)
+    with pytest.raises(Exception):
+        parsed.timestamp = 0
+
+
 def test_one_byte_of_body_breaks_it():
     body = b'{"id":"evt_x","amount":1900}'
     header = signature.sign(body, SECRET, 1763000000)
