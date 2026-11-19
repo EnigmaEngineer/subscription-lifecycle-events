@@ -1,0 +1,92 @@
+{
+  "ambiguity": {
+    "probe_ambiguous_seconds": 28,
+    "probe_changed_but_not_flagged": 0,
+    "probe_events": 1773,
+    "probe_replays_agree": true,
+    "probe_resolved_by_event_id": 28,
+    "probe_subscriptions_changed_by_id_order": 6,
+    "probe_subscriptions_flagged": 27,
+    "probe_tied_seconds": 329
+  },
+  "determinism": {
+    "clean_reproduces": true,
+    "clean_sha256": "6608969371b04ffd403c308860a72c9194b85f5490913c2fdb3c20143afbf698",
+    "wire_reproduces": true,
+    "wire_sha256": "f5d48d41b03316da152c041d04790dbab8c6bdab07728cc90d6ceda122592293"
+  },
+  "fixtures": {
+    "fixtures": 23,
+    "handler_matches_expectation": 23,
+    "outcomes": {
+      "accepted": 5,
+      "ignored": 1,
+      "rejected": 12,
+      "unparseable": 5
+    },
+    "shared_endpoint": {
+      "accepted": 1,
+      "duplicate": 4,
+      "stored_events": 1
+    },
+    "statuses": {
+      "200": 6,
+      "400": 17
+    }
+  },
+  "generated_by": "scripts/measure.py",
+  "measured_on": "2026-11-19",
+  "python": "3.10.12",
+  "reconstruction": {
+    "arrival_order_orphan_events": 95,
+    "arrival_order_subscriptions_wrong": 102,
+    "clean_deliveries": 1501,
+    "clean_log_rows": 1501,
+    "clean_state_sha256": "15a55129b9102584d690699699c1fe3e01fad8402882cbe3579accd42bbba975",
+    "duplicates_dropped_by_the_fold": 126,
+    "duplicates_refused_by_the_store": 126,
+    "replays_agree": true,
+    "resolved_by_event_id": 0,
+    "resolved_by_type_rank": 73,
+    "stream_replay_agrees": true,
+    "subscriptions": 200,
+    "subscriptions_changed_by_tie_order": 0,
+    "tied_seconds": 73,
+    "wire_deliveries": 1627,
+    "wire_log_rows": 1501,
+    "wire_state_sha256": "15a55129b9102584d690699699c1fe3e01fad8402882cbe3579accd42bbba975"
+  },
+  "replay": {
+    "accepted": 1501,
+    "clean_events": 1501,
+    "conflict": 0,
+    "delivery_total": 1627,
+    "displacement": {
+      "duplicates": 126,
+      "events": 1501,
+      "rank_max_displacement": 17,
+      "rank_mean_displacement_x1000": 5943,
+      "rank_moved": 1434,
+      "raw_max_displacement": 135
+    },
+    "duplicate": 126,
+    "rejected": 0,
+    "stored_events": 1501,
+    "ties": {
+      "events_in_ties": 146,
+      "subscription_seconds": 1428,
+      "tied_seconds": 73,
+      "widest_tie": 2
+    },
+    "types": {
+      "customer.subscription.created": 200,
+      "customer.subscription.deleted": 34,
+      "customer.subscription.paused": 96,
+      "customer.subscription.resumed": 96,
+      "customer.subscription.updated": 275,
+      "invoice.payment_failed": 73,
+      "invoice.payment_succeeded": 727
+    },
+    "wire_deliveries": 1627
+  }
+}

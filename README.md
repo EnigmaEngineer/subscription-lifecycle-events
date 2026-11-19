@@ -29,9 +29,16 @@ python scripts/measure.py
             |                      |
             |  deliveries  <-------+---  idempotency ledger, keyed on event id
             |  events      <-------+---  append only, raw bytes, never updated
-            +----------------------+
+            +----------+-----------+
                        |
               new / duplicate / conflict
+                       |
+            +----------v-----------+
+            | state.reconstruct    |   sorts on created, type rank, event id
+            |                      |   never on the row sequence
+            +----------------------+
+                       |
+              subscription state
 ```
 
 `subevents/signature.py` is the only part that touches the secret. It parses the header,
@@ -43,6 +50,10 @@ dedupe entry have to commit together. A crash between them leaves either an even
 can dedupe or a ledger row for an event nobody stored.
 
 `subevents/generator.py` produces the population. `scripts/gen_events.py` writes it out.
+
+`subevents/state.py` folds the log into per subscription state. It reads the rows in
+whatever order the log hands them over and sorts them on fields the events carry, which is
+the only reason a shuffled delivery can land on the same answer as a clean one.
 
 ## Measured on 2026-11-18
 
@@ -83,6 +94,67 @@ shuffle. `raw` keeps the index view because it is true about what a consumer rea
 is useless as a measure of reordering. Both are published so neither can be quoted as the
 other.
 
+## Reconstructing state, measured on 2026-11-19
+
+```
+subscriptions             200
+clean log rows            1501
+wire deliveries           1627
+wire log rows             1501
+replays agree             yes
+replay straight off wire  yes
+tied seconds              73
+resolved by type rank     73
+resolved by event id      0
+tie order changes state   0
+arrival order wrong subs  102
+arrival order orphans     95
+
+probe tied seconds        329
+probe ties left to the id 28
+probe subs flagged        27
+probe subs id order moved 6
+probe moved but unflagged 0
+```
+
+The clean stream and the wire stream hold the same events. One is in event time order with
+nothing repeated. The other is shuffled inside a bounded window with duplicates in it. Both
+go through the real handler into a real store, both are read back out of the append only
+log, and the two reconstructions are byte identical. The fold produces 200 subscriptions on
+either route.
+
+That only holds because the ordering comes out of the events. Ordering by arrival instead
+gets 102 of 200 subscriptions wrong, and 95 events arrive before the subscription they
+belong to exists at all.
+
+## The tie break, and what it turned out to be worth
+
+Stripe puts no version counter on a subscription object. 73 seconds in this corpus hold two
+events for one subscription, so those two have no order anywhere in the data.
+
+`subevents/state.py` ranks event types inside a second. An invoice event is the cause of the
+subscription update that follows it, because Stripe reports the failed payment and moves the
+subscription to `past_due` in the same second. That rank settles 73 of 73 ties here.
+
+Then the rank was inverted to find out what it was worth.
+Inverting it changes the state of 0 subscriptions.
+Every tie in this corpus is an invoice event sitting beside a subscription update and the
+two write different fields, so the order of that pair cannot be observed in the result. The
+rule is written down, defended, and doing no work.
+
+What does decide something is the step underneath it. Two events of the same rank in one
+second fall through to a sort on the event id, and a Stripe id is random. The generator
+carries a switch that plants that case. It is off by default because turning it on changes
+every byte the generator produces.
+On that arm the id sort leaves 28 seconds to a coin flip.
+It moves the quantity on 6 of 200 subscriptions.
+
+So those seconds get counted instead of resolved. `SubscriptionState.ambiguous_seconds`
+reports how many of a subscription's seconds were settled by nothing. It fires wider than
+the damage, because most of those seconds land on a field the next event overwrites anyway.
+What matters is the other direction.
+Of the subscriptions the id sort moves, 0 of them are unflagged.
+
 ## Verifying against something other than itself
 
 The test suite signs with `subevents.signature` and verifies with the same module. That
@@ -110,7 +182,7 @@ python3 -m pytest -q
 ```
 
 ```
-93 passed
+133 passed
 ```
 
 ## The secrets this repository does not contain
@@ -168,10 +240,14 @@ a longer window here would be a weaker check than the sender assumes.
 - **The generator is not Stripe.** Billing periods are a flat thirty days, which is wrong
   for any revenue figure. Nothing here reports one.
 - **Events sharing a second have no total order.** The generator plants 73 of them,
-  covering 146 events, on purpose. The handler stores them and does not resolve them.
-  Working that out is the next piece of work.
-- **The event log has no reader yet.** State reconstruction is not built, so the claim that
-  a shuffled replay equals a clean one is untested.
+  covering 146 events, on purpose. The type rank settles every one of them and changes
+  nothing, and the case it cannot settle is two events of the same rank. Those are counted
+  rather than resolved.
+- **Reconstruction is a full fold every time.** It reads the whole log and rebuilds every
+  subscription. That is correct and it is not what millions of events a day want. There is
+  no snapshot and no incremental apply.
+- **State lives in memory and is never written back.** The fold returns a dictionary. There
+  is no state table, so nothing downstream can query a subscription without replaying.
 - **sqlite, and one process.** `BEGIN IMMEDIATE` makes the two inserts atomic against
   another thread in this process. It is not the concurrency story a real endpoint needs.
 - **The ledger has no retention window.** Stripe stops retrying after about three days and

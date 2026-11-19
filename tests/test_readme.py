@@ -17,7 +17,10 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 README = os.path.join(ROOT, "README.md")
-MANIFEST = os.path.join(ROOT, "measurements", "2026-11-18.json")
+# latest.json is written by scripts/measure.py beside the dated file. Pointing
+# the gate at it means a re-measure does not need this line edited, which is a
+# step that would eventually get forgotten on the morning it mattered.
+MANIFEST = os.path.join(ROOT, "measurements", "latest.json")
 
 
 @pytest.fixture(scope="module")
@@ -42,6 +45,8 @@ def published(manifest):
     rep = manifest["replay"]
     disp = rep["displacement"]
     ties = rep["ties"]
+    rec = manifest["reconstruction"]
+    amb = manifest["ambiguity"]
     return {
         "wire deliveries in prose": thousands(rep["wire_deliveries"]),
         "distinct events in prose": thousands(rep["clean_events"]),
@@ -53,6 +58,16 @@ def published(manifest):
         "raw displacement": f"`raw max displacement` is {disp['raw_max_displacement']}",
         "tied seconds": f"plants {ties['tied_seconds']} of them",
         "events in ties": f"covering {ties['events_in_ties']} events,",
+        "subscriptions reconstructed": f"{rec['subscriptions']} subscriptions",
+        "arrival order cost": f"gets {rec['arrival_order_subscriptions_wrong']} of",
+        "arrival order orphans": f"{rec['arrival_order_orphan_events']} events arrive",
+        "ties the type rank settles": f"settles {rec['resolved_by_type_rank']} of",
+        "what the tie break is worth": (
+            f"changes the state of {rec['subscriptions_changed_by_tie_order']} subscriptions"
+        ),
+        "probe ties left to the id": f"leaves {amb['probe_resolved_by_event_id']} seconds",
+        "probe subscriptions moved": f"moves the quantity on {amb['probe_subscriptions_changed_by_id_order']}",
+        "probe missed by the flag": f"{amb['probe_changed_but_not_flagged']} of them are unflagged",
     }
 
 
@@ -66,15 +81,39 @@ def test_every_published_figure_appears(readme, manifest):
     assert missing == {}
 
 
-def test_the_measurement_block_is_the_scripts_output(readme):
-    """The fence under 'Measured on' is stdout, not a retyping of it."""
+def test_the_measurement_block_is_the_scripts_output(readme, tmp_path):
+    """The fence under 'Measured on' is stdout, not a retyping of it.
+
+    `--out` sends the manifest somewhere disposable. Letting this write over
+    the committed one means the suite can republish figures from whatever code
+    happens to be in the tree, which is the opposite of what the gate is for.
+    """
     out = subprocess.run(
-        [sys.executable, os.path.join(ROOT, "scripts", "measure.py")],
+        [sys.executable, os.path.join(ROOT, "scripts", "measure.py"), "--out", str(tmp_path)],
         capture_output=True,
         check=True,
         cwd=ROOT,
     ).stdout.decode()
     assert out.strip() in readme
+
+
+def test_the_replay_block_is_the_scripts_output(readme):
+    """The reconstruction fence is stdout from scripts/replay.py."""
+    out = subprocess.run(
+        [sys.executable, os.path.join(ROOT, "scripts", "replay.py")],
+        capture_output=True,
+        check=True,
+        cwd=ROOT,
+    ).stdout.decode()
+    assert out.strip() in readme
+
+
+def test_the_readme_does_not_claim_the_replays_agree_unless_they_do(manifest, readme):
+    """A sentence nobody re-derives is the thing this whole file exists against."""
+    if manifest["reconstruction"]["replays_agree"]:
+        assert "the two reconstructions are byte identical" in readme
+    else:
+        assert "the two reconstructions are byte identical" not in readme
 
 
 def test_the_agreement_block_is_the_scripts_output(readme):

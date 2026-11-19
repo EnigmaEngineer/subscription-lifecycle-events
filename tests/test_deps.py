@@ -10,7 +10,20 @@ import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOCAL = {"subevents"}
+
+
+def local_names():
+    """Everything in this repository that a module here can legitimately import.
+
+    The package, plus every script, because `scripts/measure.py` imports
+    `scripts/replay.py` to avoid computing the same figures twice. Listing them
+    by rule rather than by name keeps a real third party import failing.
+    """
+    names = {"subevents"}
+    for entry in os.listdir(os.path.join(ROOT, "scripts")):
+        if entry.endswith(".py"):
+            names.add(entry[:-3])
+    return names
 
 
 def imported_roots(path):
@@ -44,7 +57,7 @@ def test_no_third_party_imports_outside_the_tests():
     stdlib = set(sys.stdlib_module_names)
     offenders = {}
     for path in package_files():
-        extra = imported_roots(path) - stdlib - LOCAL
+        extra = imported_roots(path) - stdlib - local_names()
         if extra:
             offenders[os.path.relpath(path, ROOT)] = sorted(extra)
     assert offenders == {}

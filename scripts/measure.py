@@ -19,13 +19,18 @@ from collections import Counter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 from subevents import config  # noqa: E402
 from subevents import generator as gen  # noqa: E402
 from subevents.store import EventStore  # noqa: E402
 from subevents.webhook import WebhookHandler  # noqa: E402
 
+import replay  # noqa: E402
+
 LIVE_SECRET, ROTATED_SECRET = config.FIXTURE_SECRETS
+
+MEASURED_ON = "2026-11-19"
 
 
 def fixture_figures() -> dict:
@@ -145,21 +150,36 @@ def determinism_figures() -> dict:
     }
 
 
-def main() -> None:
+def main(argv=None) -> None:
+    # The suite runs this script to check the README fence against its stdout.
+    # Without somewhere else to write, that run overwrites the committed
+    # manifest, and a run under a mutated module leaves a manifest derived from
+    # code that is no longer in the tree. A mutation pass found that the hard
+    # way on 2026-11-19 when the control came back dirty after the module had
+    # already been restored.
+    argv = sys.argv[1:] if argv is None else argv
+    out_dir = os.path.join(ROOT, "measurements")
+    if "--out" in argv:
+        out_dir = argv[argv.index("--out") + 1]
+
     manifest = {
         "generated_by": "scripts/measure.py",
         "python": sys.version.split()[0],
+        "measured_on": MEASURED_ON,
         "fixtures": fixture_figures(),
         "replay": replay_figures(),
         "determinism": determinism_figures(),
+        "reconstruction": replay.equivalence_figures(),
+        "ambiguity": replay.ambiguity_figures(),
     }
 
-    out_dir = os.path.join(ROOT, "measurements")
     os.makedirs(out_dir, exist_ok=True)
-    path = os.path.join(out_dir, "2026-11-18.json")
-    with open(path, "w", encoding="utf-8") as handle:
-        json.dump(manifest, handle, indent=2, sort_keys=True)
-        handle.write("\n")
+    body = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+    # The dated file is the history. latest.json is what the README gate reads,
+    # so nobody has to remember to repoint a test on the morning of a re-measure.
+    for name in (MEASURED_ON + ".json", "latest.json"):
+        with open(os.path.join(out_dir, name), "w", encoding="utf-8") as handle:
+            handle.write(body)
 
     rep = manifest["replay"]
     fix = manifest["fixtures"]
