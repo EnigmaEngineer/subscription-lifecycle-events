@@ -47,6 +47,12 @@ class GeneratorConfig:
     upgrade_rate: float = 0.25
     payment_failure_rate: float = 0.08
     periods: int = 4
+    # Two updates inside one second for the same subscription. Off by default,
+    # because switching it on changes every byte the generator produces and the
+    # figures published on 2026-11-18 were measured without it. It exists so
+    # the one tie shape the ordering rule cannot resolve can be measured on
+    # purpose rather than waited for. See scripts/replay.py.
+    same_second_update_rate: float = 0.0
 
 
 @dataclass
@@ -186,6 +192,20 @@ def generate(config: GeneratorConfig | None = None) -> list[dict]:
                         rng,
                         "customer.subscription.updated",
                         period_start + rng.randrange(3, PERIOD // 2),
+                        _subscription_object(sub, status, period_start, quantity),
+                    )
+                )
+
+            # Guarded by the rate rather than by the draw, so the default
+            # config consumes no randomness here and reproduces the corpus the
+            # README already publishes.
+            if cfg.same_second_update_rate and rng.random() < cfg.same_second_update_rate:
+                quantity += 1
+                out.append(
+                    _envelope(
+                        rng,
+                        "customer.subscription.updated",
+                        billed_at,
                         _subscription_object(sub, status, period_start, quantity),
                     )
                 )
