@@ -10,6 +10,7 @@ dedupe or a dedupe entry for an event nobody stored.
 from __future__ import annotations
 
 import hashlib
+import json
 import sqlite3
 from dataclasses import dataclass
 from enum import Enum
@@ -136,6 +137,18 @@ class EventStore:
         return self.conn.execute(
             "SELECT COALESCE(SUM(conflict_count), 0) FROM deliveries"
         ).fetchone()[0]
+
+    def stored_envelopes(self) -> list[dict]:
+        """Every stored event, parsed back from the raw bytes, in row order.
+
+        Row order is arrival order and it is not the order anything happened
+        in. `subevents.state` sorts on fields the envelope carries, so the
+        sequence here is only ever the order the log is walked in.
+        """
+        rows = self.conn.execute(
+            "SELECT body FROM events ORDER BY seq"
+        ).fetchall()
+        return [json.loads(bytes(r[0])) for r in rows]
 
     def event_ids(self) -> list[str]:
         rows = self.conn.execute("SELECT event_id FROM events ORDER BY seq").fetchall()
