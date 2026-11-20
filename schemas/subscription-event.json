@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "subscription-event",
+  "description": "The envelope fields this platform reads. Nothing inside data.object is pinned, because that shape is Stripe's and pinning it would turn every product change into a refusal.",
+  "type": "object",
+  "required": ["id", "type", "created", "data"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created": {
+      "type": "integer"
+    },
+    "livemode": {
+      "type": "boolean"
+    },
+    "api_version": {
+      "type": ["string", "null"]
+    },
+    "pending_webhooks": {
+      "type": "integer"
+    },
+    "data": {
+      "type": "object",
+      "required": ["object"],
+      "properties": {
+        "object": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}
