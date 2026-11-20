@@ -1,0 +1,64 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+
+  configuration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      # Both of these run without credentials. init skips the backend entirely,
+      # which is what makes a configuration gradeable before an account exists.
+      - run: terraform fmt -check -diff
+        working-directory: infra
+      - run: terraform init -backend=false
+        working-directory: infra
+      - run: terraform validate
+        working-directory: infra
+
+  deploy:
+    # Held off on purpose. There is no AWS account behind this repository and no
+    # OIDC trust, so there is nothing for the job below to assume. It is written
+    # out rather than left as a comment because the shape of it is the thing
+    # under review, and a job that cannot run is honest where a job that fails
+    # every push is noise.
+    #
+    # To turn it on: create the trust, scope it to this repository rather than
+    # to the owner, put the role ARN in AWS_ROLE_ARN, then delete this one line.
+    if: false
+    needs: [suite, configuration]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - run: terraform init
+        working-directory: infra
+      - run: terraform plan -input=false -out=tfplan
+        working-directory: infra
+      - run: terraform apply -input=false tfplan
+        working-directory: infra
