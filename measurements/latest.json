@@ -34,8 +34,152 @@
       "400": 17
     }
   },
+  "gateway": {
+    "bodies_that_must_arrive_base64": 1,
+    "bodies_the_gateway_can_carry_as_text": 22,
+    "fixtures": 23,
+    "outcomes_changed_by_ignoring_the_flag": 11,
+    "outcomes_under_a_decoder_that_ignores_it": [
+      "rejected"
+    ],
+    "outcomes_under_the_real_decoder": [
+      "accepted",
+      "ignored",
+      "rejected",
+      "unparseable"
+    ]
+  },
   "generated_by": "scripts/measure.py",
-  "measured_on": "2026-11-19",
+  "infra": {
+    "details": {
+      "cluster_requires_iam_authentication": "sasl iam is enabled",
+      "default_endpoint_is_disabled": "the execute-api hostname is off",
+      "every_log_group_sets_retention": "2 of 2 log groups set a retention",
+      "lambda_timeout_under_gateway_ceiling": "highest function timeout is 29s against a 30s ceiling",
+      "no_account_shaped_variable_carries_a_default": "3 variables stay unset",
+      "no_wildcard_resource_in_a_role_policy": "0 policy statements grant every resource",
+      "payload_format_matches_the_decoder": "integration sends payload format 2.0 and lambda_entry decodes 2.0",
+      "permission_is_scoped_to_this_api": "source_arn references the api execution arn",
+      "route_accepts_an_unsigned_caller": "route authorization is NONE and the signature is the gate",
+      "schema_compatibility_is_enforced": "registry compatibility is BACKWARD"
+    },
+    "rules": 10,
+    "rules_passing": 10
+  },
+  "ledger": {
+    "arms": {
+      "random": [
+        {
+          "accepted": 1501,
+          "distinct_event_ids": 1501,
+          "dropped_by_the_fold": 0,
+          "refused_as_duplicate": 126,
+          "rows_across_logs": 1501,
+          "rows_beyond_one_per_event": 0,
+          "shards": 1,
+          "state_sha256": "15a55129b9102584d690699699c1fe3e01fad8402882cbe3579accd42bbba975"
+        },
+        {
+          "accepted": 1565,
+          "distinct_event_ids": 1501,
+          "dropped_by_the_fold": 64,
+          "refused_as_duplicate": 62,
+          "rows_across_logs": 1565,
+          "rows_beyond_one_per_event": 64,
+          "shards": 2,
+          "state_sha256": "15a55129b9102584d690699699c1fe3e01fad8402882cbe3579accd42bbba975"
+        },
+        {
+          "accepted": 1593,
+          "distinct_event_ids": 1501,
+          "dropped_by_the_fold": 92,
+          "refused_as_duplicate": 34,
+          "rows_across_logs": 1593,
+          "rows_beyond_one_per_event": 92,
+          "shards": 4,
+          "state_sha256": "15a55129b9102584d690699699c1fe3e01fad8402882cbe3579accd42bbba975"
+        },
+        {
+          "accepted": 1611,
+          "distinct_event_ids": 1501,
+          "dropped_by_the_fold": 110,
+          "refused_as_duplicate": 16,
+          "rows_across_logs": 1611,
+          "rows_beyond_one_per_event": 110,
+          "shards": 8,
+          "state_sha256": "15a55129b9102584d690699699c1fe3e01fad8402882cbe3579accd42bbba975"
+        },
+        {
+          "accepted": 1617,
+          "distinct_event_ids": 1501,
+          "dropped_by_the_fold": 116,
+          "refused_as_duplicate": 10,
+          "rows_across_logs": 1617,
+          "rows_beyond_one_per_event": 116,
+          "shards": 16,
+          "state_sha256": "15a55129b9102584d690699699c1fe3e01fad8402882cbe3579accd42bbba975"
+        }
+      ],
+      "round_robin": [
+        {
+          "accepted": 1501,
+          "distinct_event_ids": 1501,
+          "dropped_by_the_fold": 0,
+          "refused_as_duplicate": 126,
+          "rows_across_logs": 1501,
+          "rows_beyond_one_per_event": 0,
+          "shards": 1,
+          "state_sha256": "15a55129b9102584d690699699c1fe3e01fad8402882cbe3579accd42bbba975"
+        },
+        {
+          "accepted": 1613,
+          "distinct_event_ids": 1501,
+          "dropped_by_the_fold": 112,
+          "refused_as_duplicate": 14,
+          "rows_across_logs": 1613,
+          "rows_beyond_one_per_event": 112,
+          "shards": 2,
+          "state_sha256": "15a55129b9102584d690699699c1fe3e01fad8402882cbe3579accd42bbba975"
+        },
+        {
+          "accepted": 1627,
+          "distinct_event_ids": 1501,
+          "dropped_by_the_fold": 126,
+          "refused_as_duplicate": 0,
+          "rows_across_logs": 1627,
+          "rows_beyond_one_per_event": 126,
+          "shards": 4,
+          "state_sha256": "15a55129b9102584d690699699c1fe3e01fad8402882cbe3579accd42bbba975"
+        },
+        {
+          "accepted": 1627,
+          "distinct_event_ids": 1501,
+          "dropped_by_the_fold": 126,
+          "refused_as_duplicate": 0,
+          "rows_across_logs": 1627,
+          "rows_beyond_one_per_event": 126,
+          "shards": 8,
+          "state_sha256": "15a55129b9102584d690699699c1fe3e01fad8402882cbe3579accd42bbba975"
+        },
+        {
+          "accepted": 1627,
+          "distinct_event_ids": 1501,
+          "dropped_by_the_fold": 126,
+          "refused_as_duplicate": 0,
+          "rows_across_logs": 1627,
+          "rows_beyond_one_per_event": 126,
+          "shards": 16,
+          "state_sha256": "15a55129b9102584d690699699c1fe3e01fad8402882cbe3579accd42bbba975"
+        }
+      ]
+    },
+    "distinct_events": 1501,
+    "distinct_state_digests": 1,
+    "duplicate_deliveries": 126,
+    "state_survives_every_split": true,
+    "wire_deliveries": 1627
+  },
+  "measured_on": "2026-11-20",
   "python": "3.10.12",
   "reconstruction": {
     "arrival_order_orphan_events": 95,
@@ -88,5 +232,16 @@
       "invoice.payment_succeeded": 727
     },
     "wire_deliveries": 1627
+  },
+  "schema": {
+    "acknowledged_and_nonconforming": 0,
+    "envelope_with_no_data_outcome": "accepted",
+    "envelope_with_no_data_status": 200,
+    "envelope_with_no_data_violations": [
+      "data is missing"
+    ],
+    "fixtures": 23,
+    "refused_by_the_schema": 5,
+    "schema_keywords_unimplemented": []
   }
 }

@@ -15,6 +15,16 @@ python scripts/measure.py
                  signed request
                        |
             +----------v-----------+
+            | API Gateway HTTP API |   POST /stripe/events, authorization NONE
+            | payload format 2.0   |   body as a string, plus isBase64Encoded
+            +----------+-----------+
+                       |
+            +----------v-----------+
+            | lambda_entry.raw_body|   the only place that decides what the
+            |                      |   body is. everything below takes bytes
+            +----------+-----------+
+                       |
+            +----------v-----------+
             | signature.verify     |   hmac sha256 over "t.body"
             | tolerance 300s       |   every v1 value, every configured secret
             +----------+-----------+
@@ -55,7 +65,7 @@ can dedupe or a ledger row for an event nobody stored.
 whatever order the log hands them over and sorts them on fields the events carry, which is
 the only reason a shuffled delivery can land on the same answer as a clean one.
 
-## Measured on 2026-11-18
+## Measured on 2026-11-20
 
 Python 3.10.12 on this machine. Every number below is printed by `scripts/measure.py` and
 `tests/test_readme.py` fails if one of them drifts.
@@ -72,6 +82,14 @@ rank max displacement     17
 raw max displacement      135
 tied seconds              73
 events in ties            146
+bodies carried as text    22
+bodies needing base64     1
+outcomes a wrong decode changes  11
+schema refuses            5
+acknowledged and nonconforming   0
+configuration rules       10 of 10
+ledgers at which nothing is refused  4
+state digests across every split     1
 ```
 
 1,627 deliveries carrying 1,501 distinct events leave 1,501 rows. That is the idempotency
@@ -182,8 +200,14 @@ python3 -m pytest -q
 ```
 
 ```
-133 passed
+231 tests collected
+230 passed, 1 skipped
 ```
+
+The skip is deliberate and it is counted. One fixture in the corpus is signed bytes that
+are not valid UTF-8, so the arm that carries a body as a string has nothing to assert about
+it. `tests/test_readme.py` derives the skip count from the measurement rather than
+accepting whatever the run reports.
 
 ## The secrets this repository does not contain
 
@@ -233,6 +257,112 @@ endpoint more lenient than the sender, which is a strange direction for a signat
 **The replay window is inclusive at 300 seconds.** Stripe's own default is five minutes and
 a longer window here would be a weaker check than the sender assumes.
 
+## Behind a gateway, measured on 2026-11-20
+
+`infra/` declares the API Gateway HTTP API, the Lambda function behind it, an MSK
+serverless cluster and a Glue Schema Registry entry for the envelope. **None of it has
+been applied.** There is no AWS account behind this repository, so `terraform validate` is
+the furthest this configuration has been taken. The limitations section says what that
+leaves unproven.
+
+What writing it turned up was not in the configuration. It was in the code the
+configuration points at.
+
+### The body is a string and the signature is over bytes
+
+API Gateway does not hand a Lambda function a request. It hands over a JSON document with
+the body as a string and a separate flag saying whether that string is base64. The flag is
+set by the gateway and not by the sender. `subevents/lambda_entry.py` is the only place
+allowed to decide what the body is, and it is a module rather than four inline lines
+because the decoding rule is the part worth grading.
+
+A decoder that ignores the flag changes the outcome of **11 of the 23** fixtures, and the
+shape of that is worse than the count. Every one of the 23 comes back `rejected` under the
+wrong decoder. Not fewer acceptances. No other outcome at all. Five valid deliveries, one
+event this platform ignores on purpose and five malformed envelopes all report that no
+signature matched, which points whoever is on call at Stripe rather than at the gateway.
+
+One fixture in the corpus is signed bytes that are not valid UTF-8. The gateway has no way
+to put those in a JSON string, so **22 of 23** bodies can arrive as text and 1 can only
+ever arrive base64. The suite skips the text arm for that one and pins the count, because
+a skip nobody counts is a test that stopped running.
+
+### The idempotency ledger stops being one ledger
+
+This is the finding worth the day. Each concurrent Lambda execution environment gets its
+own `/tmp`, so each one gets its own sqlite file, so each one gets its own ledger. A retry
+landing anywhere else meets a ledger that has never seen the event.
+
+```
+wire deliveries           1627
+distinct events           1501
+duplicate deliveries      126
+
+round_robin dispatch
+  ledgers  refused  rows  extra rows  fold dropped
+        1      126  1501           0             0
+        2       14  1613         112           112
+        4        0  1627         126           126
+        8        0  1627         126           126
+       16        0  1627         126           126
+
+random dispatch
+  ledgers  refused  rows  extra rows  fold dropped
+        1      126  1501           0             0
+        2       62  1565          64            64
+        4       34  1593          92            92
+        8       16  1611         110           110
+       16       10  1617         116           116
+
+distinct state digests    1
+state survives every split yes
+```
+
+Round robin is the adversarial arm rather than the gentle one, because this generator
+inserts every duplicate immediately after its original and taking environments in turn
+guarantees a pair never meets itself. **At 4 ledgers it refuses nothing at all.** Random
+dispatch is the better model and it tracks one in k, which is what you would predict and
+is worth stating because it was predicted before it was run.
+
+The answer does not change. One state digest across all 10 arms. What holds that together
+is the dedupe inside `state.reconstruct`, which was dead code until 2026-11-19, when an arm
+reading straight off the wire was added to exercise it. The ledger built first is the part
+that stops working, and the part nothing was exercising is the part carrying the guarantee.
+
+### The schema and the handler disagree about one envelope
+
+The Glue entry registers the envelope as a contract for consumers. On this corpus it
+refuses 5 envelopes and the handler had already refused every one of them, so registering
+it bought a contract rather than a second gate.
+
+It does disagree in the other direction. The schema requires `data`. The shape check
+deliberately does not. So an envelope with no `data` gets a 200 and a row in the log, and
+then fails at the producer against the contract the registry holds. That envelope was named
+as a limitation on 2026-11-18. Registering the schema turned it from a limitation into two
+components answering differently about the same bytes.
+
+### What terraform does and does not grade
+
+Ten defects were planted into the configuration one at a time, each one matching a rule in
+`subevents/infra_rules.py`. `terraform validate` caught 1 of 10. The other 9 are
+configurations it called valid.
+
+A function timeout above the gateway's integration ceiling. A Lambda permission with no
+`source_arn`, which lets any API Gateway in any account invoke the function. A policy
+granting every resource. A registry compatibility of `NONE`. A log group with no retention.
+The payload format the decoder does not read. A variable naming a real network carrying a
+default. None of those are schema errors and all of them are wrong.
+
+So the rules live in the suite and read the files as text, which means they run on a clone
+with no terraform and no credentials. The weakness of that is regular expressions over
+source, and the answer to it is that every rule is also pointed at a copy carrying its own
+defect and has to refuse it. A rule whose pattern stops matching reads exactly like a rule
+that found nothing.
+
+There is an eleventh planted case and it is not a rule. It misspells an attribute name,
+which terraform has to refuse. A manifest reporting that validate caught nothing looks the
+same whether validate is discerning or whether it never ran.
+
 ## Known limitations
 
 - **Nothing has run against Stripe.** The fixtures are signed with the documented algorithm
@@ -256,8 +386,28 @@ a longer window here would be a weaker check than the sender assumes.
 - **An envelope with no `data` is accepted.** The shape check reads the three fields the
   handler itself uses. A consumer reading `data.object` has to handle its absence and
   nothing downstream does yet.
-- **No HTTP layer.** `handle()` takes bytes and a header. There is no server, no timeout
-  and no backpressure.
+- **No HTTP layer runs here.** `handle()` takes bytes and a header, and
+  `lambda_entry.handle_event()` takes a gateway event. Neither has been behind a socket.
+  There is no server, no timeout and no backpressure in this repository.
+- **Nothing in `infra/` has been applied.** `terraform fmt` and `terraform validate` are
+  the whole verification story. No plan has run, because a plan needs credentials. So no
+  resource name has been checked against a real account and no quota has been met. The
+  variable validation blocks grade nothing either, because validate does not evaluate
+  them. The deploy job in `.github/workflows/ci.yml` is held off with `if: false` for the
+  same reason.
+- **The ledger is wrong behind Lambda and the configuration deploys it anyway.** One
+  sqlite file per execution environment. Measured above. The fix is a shared store and it
+  is not written.
+- **Nothing produces to MSK.** The cluster is declared and the publisher is a seam that
+  writes nowhere. The topic name and the bootstrap endpoint are wired into the function
+  environment and no record has been sent.
+- **The schema is registered and not enforced at the door.** Nothing checks an envelope
+  against the registry before acknowledging it, so the 200 and the contract can disagree.
+  `subevents/envelope_schema.py` implements the part of draft-07 the schema file uses and
+  no more, and the suite fails if the schema grows a keyword it ignores.
+- **The gateway throttle numbers are a guess.** 200 burst and 500 a second. Nothing here
+  has measured an arrival rate, and the ceiling is there to stop a bill rather than to
+  shape traffic.
 - **The fixture keys are not Stripe shaped, on purpose.** See below. A real deployment
   sets `SUBEVENTS_WEBHOOK_SECRETS` and a deployment that forgets gets keys that cannot
   verify anything Stripe sent, which fails on the first delivery rather than quietly

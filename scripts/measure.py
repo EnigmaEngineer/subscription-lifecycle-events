@@ -27,10 +27,11 @@ from subevents.store import EventStore  # noqa: E402
 from subevents.webhook import WebhookHandler  # noqa: E402
 
 import replay  # noqa: E402
+import shard  # noqa: E402
 
 LIVE_SECRET, ROTATED_SECRET = config.FIXTURE_SECRETS
 
-MEASURED_ON = "2026-11-19"
+MEASURED_ON = "2026-11-20"
 
 
 def fixture_figures() -> dict:
@@ -128,6 +129,123 @@ def replay_figures() -> dict:
     return figures
 
 
+def gateway_figures() -> dict:
+    """What the gateway's envelope does to the corpus, and what a wrong decode costs.
+
+    The handler takes bytes. API Gateway hands over a JSON document with the
+    body as a string and a flag saying whether that string is base64. So there
+    are two shapes of the same delivery and one of them cannot carry every body
+    in this corpus at all.
+    """
+    from subevents import lambda_entry
+
+    paths = sorted(glob.glob(os.path.join(ROOT, "fixtures", "signed", "*.json")))
+    as_text = 0
+    changed = 0
+    naive_outcomes = set()
+    real_outcomes = set()
+
+    for path in paths:
+        fixture = json.load(open(path, encoding="utf-8"))
+        body = base64.b64decode(fixture["body_b64"])
+        try:
+            body.decode("utf-8")
+            as_text += 1
+        except UnicodeDecodeError:
+            pass
+
+        encoded = base64.b64encode(body).decode("ascii")
+        event = {
+            "headers": {"stripe-signature": fixture["header"]},
+            "body": encoded,
+            "isBase64Encoded": True,
+        }
+        real = WebhookHandler(EventStore(), [LIVE_SECRET, ROTATED_SECRET]).handle(
+            lambda_entry.raw_body(event), fixture["header"], fixture["now"]
+        )
+        naive = WebhookHandler(EventStore(), [LIVE_SECRET, ROTATED_SECRET]).handle(
+            encoded.encode("utf-8"), fixture["header"], fixture["now"]
+        )
+        real_outcomes.add(real.outcome)
+        naive_outcomes.add(naive.outcome)
+        if real.outcome != naive.outcome:
+            changed += 1
+
+    return {
+        "fixtures": len(paths),
+        "bodies_the_gateway_can_carry_as_text": as_text,
+        "bodies_that_must_arrive_base64": len(paths) - as_text,
+        "outcomes_changed_by_ignoring_the_flag": changed,
+        "outcomes_under_the_real_decoder": sorted(real_outcomes),
+        "outcomes_under_a_decoder_that_ignores_it": sorted(naive_outcomes),
+    }
+
+
+def schema_figures() -> dict:
+    """The registered envelope schema against what the handler enforces."""
+    from subevents import envelope_schema
+
+    paths = sorted(glob.glob(os.path.join(ROOT, "fixtures", "signed", "*.json")))
+    acknowledged_and_nonconforming = 0
+    refused_by_the_schema = 0
+
+    for path in paths:
+        fixture = json.load(open(path, encoding="utf-8"))
+        body = base64.b64decode(fixture["body_b64"])
+        response = WebhookHandler(EventStore(), [LIVE_SECRET, ROTATED_SECRET]).handle(
+            body, fixture["header"], fixture["now"]
+        )
+        acknowledged = response.outcome in ("accepted", "duplicate", "ignored")
+        try:
+            conforms = envelope_schema.conforms(json.loads(body))
+        except ValueError:
+            conforms = False
+        if not conforms:
+            refused_by_the_schema += 1
+        if acknowledged and not conforms:
+            acknowledged_and_nonconforming += 1
+
+    # The envelope the handler accepts and the schema refuses. Built here rather
+    # than taken from the corpus, because the corpus has no such case and the
+    # disagreement is the figure worth publishing.
+    no_data = {"id": "evt_no_data", "type": "customer.subscription.updated", "created": 1763000000}
+    body = json.dumps(no_data, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    import subevents.signature as sig
+
+    header = sig.sign(body, LIVE_SECRET, 1763000000)
+    response = WebhookHandler(EventStore(), [LIVE_SECRET]).handle(body, header, 1763000001)
+
+    return {
+        "fixtures": len(paths),
+        "refused_by_the_schema": refused_by_the_schema,
+        "acknowledged_and_nonconforming": acknowledged_and_nonconforming,
+        "schema_keywords_unimplemented": sorted(
+            envelope_schema.keywords_used(envelope_schema.load_schema())
+            - envelope_schema.IMPLEMENTED_KEYWORDS
+        ),
+        "envelope_with_no_data_status": response.status,
+        "envelope_with_no_data_outcome": response.outcome,
+        "envelope_with_no_data_violations": envelope_schema.violations(no_data),
+    }
+
+
+def ledger_figures() -> dict:
+    """What the idempotency ledger refuses once there is more than one of it."""
+    return shard.figures()
+
+
+def infra_figures() -> dict:
+    """The configuration rules, graded on the committed configuration."""
+    from subevents import infra_rules
+
+    findings = infra_rules.run()
+    return {
+        "rules": len(findings),
+        "rules_passing": sum(1 for finding in findings if finding.ok),
+        "details": {finding.rule: finding.detail for finding in findings},
+    }
+
+
 def determinism_figures() -> dict:
     """Two generator runs on one seed have to produce identical bytes."""
     import hashlib
@@ -171,6 +289,10 @@ def main(argv=None) -> None:
         "determinism": determinism_figures(),
         "reconstruction": replay.equivalence_figures(),
         "ambiguity": replay.ambiguity_figures(),
+        "gateway": gateway_figures(),
+        "schema": schema_figures(),
+        "ledger": ledger_figures(),
+        "infra": infra_figures(),
     }
 
     os.makedirs(out_dir, exist_ok=True)
@@ -196,6 +318,27 @@ def main(argv=None) -> None:
     print(f"raw max displacement      {rep['displacement']['raw_max_displacement']}")
     print(f"tied seconds              {rep['ties']['tied_seconds']}")
     print(f"events in ties            {rep['ties']['events_in_ties']}")
+
+    gate = manifest["gateway"]
+    sch = manifest["schema"]
+    led = manifest["ledger"]
+    inf = manifest["infra"]
+    print(f"bodies carried as text    {gate['bodies_the_gateway_can_carry_as_text']}")
+    print(f"bodies needing base64     {gate['bodies_that_must_arrive_base64']}")
+    print(f"outcomes a wrong decode changes  {gate['outcomes_changed_by_ignoring_the_flag']}")
+    print(f"schema refuses            {sch['refused_by_the_schema']}")
+    print(f"acknowledged and nonconforming   {sch['acknowledged_and_nonconforming']}")
+    print(f"configuration rules       {inf['rules_passing']} of {inf['rules']}")
+    print(f"ledgers at which nothing is refused  {_first_zero(led)}")
+    print(f"state digests across every split     {led['distinct_state_digests']}")
+
+
+def _first_zero(led: dict) -> int:
+    """The smallest number of round robin ledgers that refuses nothing at all."""
+    for arm in led["arms"]["round_robin"]:
+        if arm["refused_as_duplicate"] == 0:
+            return arm["shards"]
+    return 0
 
 
 if __name__ == "__main__":
