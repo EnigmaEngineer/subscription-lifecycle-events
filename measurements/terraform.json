@@ -1,0 +1,64 @@
+{
+  "caught_by_terraform": 1,
+  "control_error": "Unsupported attribute",
+  "control_refused": true,
+  "defects": {
+    "cluster_requires_iam_authentication": {
+      "caught_by_terraform": true,
+      "file": "msk.tf",
+      "first_error": "Insufficient client_authentication blocks"
+    },
+    "default_endpoint_is_disabled": {
+      "caught_by_terraform": false,
+      "file": "apigateway.tf",
+      "first_error": ""
+    },
+    "every_log_group_sets_retention": {
+      "caught_by_terraform": false,
+      "file": "lambda.tf",
+      "first_error": ""
+    },
+    "lambda_timeout_under_gateway_ceiling": {
+      "caught_by_terraform": false,
+      "file": "lambda.tf",
+      "first_error": ""
+    },
+    "no_account_shaped_variable_carries_a_default": {
+      "caught_by_terraform": false,
+      "file": "variables.tf",
+      "first_error": ""
+    },
+    "no_wildcard_resource_in_a_role_policy": {
+      "caught_by_terraform": false,
+      "file": "iam.tf",
+      "first_error": ""
+    },
+    "payload_format_matches_the_decoder": {
+      "caught_by_terraform": false,
+      "file": "apigateway.tf",
+      "first_error": ""
+    },
+    "permission_is_scoped_to_this_api": {
+      "caught_by_terraform": false,
+      "file": "lambda.tf",
+      "first_error": ""
+    },
+    "route_accepts_an_unsigned_caller": {
+      "caught_by_terraform": false,
+      "file": "apigateway.tf",
+      "first_error": ""
+    },
+    "schema_compatibility_is_enforced": {
+      "caught_by_terraform": false,
+      "file": "glue.tf",
+      "first_error": ""
+    }
+  },
+  "fmt_clean": true,
+  "generated_by": "scripts/validate_infra.py",
+  "missed_by_terraform": 9,
+  "planted_defects": 10,
+  "terraform_version": "1.9.8",
+  "validate_clean": true,
+  "validate_output": "Success! The configuration is valid."
+}
