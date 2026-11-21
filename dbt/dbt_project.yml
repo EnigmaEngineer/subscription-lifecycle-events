@@ -1,0 +1,37 @@
+# The var below is a copy of a constant that lives in subevents/state.py.
+# tests/test_dbt_state.py fails if the two stop agreeing, because a number
+# written down twice with nothing comparing them is the shape that goes stale.
+name: "subevents"
+version: "1.0.0"
+config-version: 2
+
+profile: "subevents"
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+target-path: "target"
+
+vars:
+  unranked_type_rank: 90
+
+models:
+  subevents:
+    staging:
+      +materialized: view
+      +schema: STAGING
+    intermediate:
+      +materialized: view
+      +schema: STAGING
+    marts:
+      +materialized: table
+      +schema: ANALYTICS
+
+seeds:
+  subevents:
+    +schema: STAGING
+    event_type_rank:
+      +column_types:
+        event_type: varchar
+        type_rank: integer
+        is_invoice: boolean

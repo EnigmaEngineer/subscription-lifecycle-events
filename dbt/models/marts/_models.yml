@@ -1,0 +1,49 @@
+version: 2
+
+models:
+  - name: stg_subscription_events
+    description: >
+      One row per Stripe event id. The sink lands every delivery, so the
+      deduplication that used to live in a local ledger lives here.
+    columns:
+      - name: event_id
+        tests:
+          - unique
+          - not_null
+      - name: event_type
+        tests:
+          - not_null
+      - name: created
+        tests:
+          - not_null
+
+  - name: int_event_order
+    description: >
+      Every event that reaches a subscription, carrying the position it is
+      applied at. Events with no subscription in them are dropped here.
+    columns:
+      - name: subscription_id
+        tests:
+          - not_null
+      - name: apply_order
+        tests:
+          - not_null
+      - name: type_rank
+        tests:
+          - not_null
+
+  - name: subscription_state
+    description: >
+      Reconstructed state, one row per subscription. Compared field by field
+      against the Python fold by scripts/compare_state.py.
+    columns:
+      - name: subscription_id
+        tests:
+          - unique
+          - not_null
+      - name: events_applied
+        tests:
+          - not_null
+      - name: ambiguous_seconds
+        tests:
+          - not_null

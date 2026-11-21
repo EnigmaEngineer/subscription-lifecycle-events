@@ -1,0 +1,85 @@
+{
+  "clean_events": 1501,
+  "controls": {
+    "arrival_order_fields_disagreeing": {
+      "first_event_at": 95,
+      "status": 17
+    },
+    "arrival_order_subscriptions_disagreeing": 102,
+    "flat_precedence_dbt_exit": 0,
+    "flat_precedence_fields_disagreeing": {
+      "ambiguous_seconds": 61
+    },
+    "flat_precedence_subscriptions_disagreeing": 61
+  },
+  "dbt": {
+    "command": "dbt build --target duckdb",
+    "dbt_version": "1.9.4",
+    "exit_code": 0,
+    "nodes_by_kind": {
+      "model": 4,
+      "seed": 1,
+      "test": 13
+    },
+    "nodes_by_status": {
+      "pass": 13,
+      "success": 5
+    }
+  },
+  "distinct_event_ids": 1501,
+  "fields_disagreeing": {},
+  "first_disagreement": {},
+  "folds_agree": true,
+  "landed_records": 1627,
+  "only_in_python": [],
+  "only_in_sql": [],
+  "ordered_rows": 1501,
+  "partitions": 4,
+  "probe": {
+    "clean_events": 1773,
+    "dbt_exit": 0,
+    "fields_disagreeing": {},
+    "folds_agree": true,
+    "landed_records": 1919,
+    "subscriptions_disagreeing": 0,
+    "tied_seconds": 329,
+    "ties_left_to_the_event_id": 28
+  },
+  "python_state_sha256": "15a55129b9102584d690699699c1fe3e01fad8402882cbe3579accd42bbba975",
+  "resolved": {
+    "duckdb": {
+      "exit_code": 0,
+      "models": [
+        "subevents.ANALYTICS.subscription_state",
+        "subevents.STAGING.event_type_rank",
+        "subevents.STAGING.int_ambiguous_seconds",
+        "subevents.STAGING.int_event_order",
+        "subevents.STAGING.stg_subscription_events"
+      ],
+      "sources": [
+        "subevents.raw.raw_subscription_events"
+      ]
+    },
+    "snowflake": {
+      "exit_code": 0,
+      "models": [
+        "SUBEVENTS.ANALYTICS.subscription_state",
+        "SUBEVENTS.STAGING.event_type_rank",
+        "SUBEVENTS.STAGING.int_ambiguous_seconds",
+        "SUBEVENTS.STAGING.int_event_order",
+        "SUBEVENTS.STAGING.stg_subscription_events"
+      ],
+      "sources": [
+        "SUBEVENTS.RAW.raw_subscription_events"
+      ]
+    }
+  },
+  "seed_rows": 7,
+  "sql_state_sha256": "15a55129b9102584d690699699c1fe3e01fad8402882cbe3579accd42bbba975",
+  "staging_rows": 1501,
+  "subscriptions_compared": 200,
+  "subscriptions_disagreeing": 0,
+  "subscriptions_python": 200,
+  "subscriptions_sql": 200,
+  "unranked_type_rank": 90
+}

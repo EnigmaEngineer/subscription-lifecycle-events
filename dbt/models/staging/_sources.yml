@@ -1,0 +1,22 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Landing schema for the Kafka sink. The connector creates the table on its
+      first delivery, so nothing in this repository declares its shape.
+    database: "{{ 'SUBEVENTS' if target.type == 'snowflake' else target.database }}"
+    schema: "{{ 'RAW' if target.type == 'snowflake' else 'raw' }}"
+    tables:
+      - name: raw_subscription_events
+        description: >
+          Two variant columns per Kafka record. record_content is the Stripe
+          envelope as it arrived and record_metadata is the topic, the
+          partition, the offset and the time the record was created.
+        columns:
+          - name: record_content
+            tests:
+              - not_null
+          - name: record_metadata
+            tests:
+              - not_null

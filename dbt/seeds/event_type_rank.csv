@@ -1,0 +1,8 @@
+event_type,type_rank,is_invoice
+customer.subscription.created,0,false
+invoice.payment_failed,1,true
+invoice.payment_succeeded,1,true
+customer.subscription.updated,2,false
+customer.subscription.paused,3,false
+customer.subscription.resumed,4,false
+customer.subscription.deleted,5,false

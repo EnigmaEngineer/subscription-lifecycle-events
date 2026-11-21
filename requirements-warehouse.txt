@@ -1,0 +1,7 @@
+# Only the warehouse scripts need these. The suite does not, and the figures
+# they produce are read back out of measurements/dbt.json so a clone with
+# neither installed still grades them.
+dbt-core==1.9.4
+dbt-duckdb==1.9.2
+duckdb==1.5.6
+dbt-snowflake==1.9.2
