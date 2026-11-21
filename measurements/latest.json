@@ -9,6 +9,41 @@
     "probe_subscriptions_flagged": 27,
     "probe_tied_seconds": 329
   },
+  "connector": {
+    "defaults_read": 16,
+    "defaults_that_depend_on_the_version": [
+      "enable.streaming.channel.offset.migration",
+      "snowflake.snowpipe.v2CleanerEnabled",
+      "snowflake.streaming.enable.single.buffer",
+      "snowflake.streaming.max.client.lag"
+    ],
+    "defaults_two_pages_disagree_about": [
+      "buffer.flush.time",
+      "buffer.size.bytes"
+    ],
+    "deliberate_omissions": [
+      "buffer.flush.time",
+      "enable.streaming.channel.offset.migration",
+      "snowflake.snowpipe.v2CleanerEnabled"
+    ],
+    "details": {
+      "a_tombstone_does_not_become_a_row": "behavior.on.null.values is IGNORE and the documented default is DEFAULT",
+      "client_lag_is_inside_the_documented_range": "max client lag is 5s against a documented 1 to 600",
+      "converter_is_supported_by_streaming": "value.converter is 'org.apache.kafka.connect.json.JsonConverter'",
+      "dead_letter_records_carry_no_payload": "errors.log.include.messages is 'false'",
+      "every_deliberate_omission_is_real": "3 omissions all real",
+      "ingestion_method_is_stated": "method is 'SNOWPIPE_STREAMING' and the documented default is SNOWPIPE",
+      "no_buffer_setting_that_single_buffer_ignores": "single buffer is on and the file still sets []",
+      "no_property_rests_on_a_contested_default": "6 contested, undeclared omissions []",
+      "schematization_off_means_two_variant_columns": "schematization is off so the landing table is the two column shape",
+      "secrets_arrive_through_a_config_provider": "all four are provider references",
+      "the_ingesting_role_is_named": "snowflake.role.name is 'KAFKA_CONNECTOR_ROLE'",
+      "tolerated_errors_have_somewhere_to_go": "tolerance is ALL with queue 'subscription-events-dlq' and logging True"
+    },
+    "pages_read": 4,
+    "rules": 12,
+    "rules_passing": 12
+  },
   "determinism": {
     "clean_reproduces": true,
     "clean_sha256": "6608969371b04ffd403c308860a72c9194b85f5490913c2fdb3c20143afbf698",
@@ -179,7 +214,7 @@
     "state_survives_every_split": true,
     "wire_deliveries": 1627
   },
-  "measured_on": "2026-11-20",
+  "measured_on": "2026-11-21",
   "python": "3.10.12",
   "reconstruction": {
     "arrival_order_orphan_events": 95,
@@ -243,5 +278,32 @@
     "fixtures": 23,
     "refused_by_the_schema": 5,
     "schema_keywords_unimplemented": []
+  },
+  "warehouse": {
+    "created_and_spent_nowhere": [
+      "USER KAFKA_CONNECTOR_USER"
+    ],
+    "details": {
+      "every_created_name_is_spent": "every declared name is spent",
+      "every_declared_exception_is_real": "both exception lists match the files",
+      "every_grant_is_a_source_of_truth": "11 privilege grants, not strict: []",
+      "every_spent_name_is_created": "every spent name is declared",
+      "no_grant_replans_on_every_apply": "0 grants set always_apply",
+      "no_grant_takes_all_privileges": "no grant uses all_privileges",
+      "no_variable_carries_a_default": "4 variables, defaults on []",
+      "the_connector_role_is_granted_straight_to_the_user": "1 direct grants and 0 through a parent role",
+      "the_landing_table_is_not_declared": "no table is declared here",
+      "the_reconciliation_read_something": "5 readers all found names",
+      "the_service_user_carries_a_public_key": "1 service users, no public key on []",
+      "the_service_user_declares_a_default_role": "1 service users, no default role on []"
+    },
+    "names_created": 8,
+    "names_spent": 8,
+    "reconciliation_rules_passing": 4,
+    "rules": 8,
+    "rules_passing": 8,
+    "spent_and_created_elsewhere": [
+      "TABLE RAW_SUBSCRIPTION_EVENTS"
+    ]
   }
 }

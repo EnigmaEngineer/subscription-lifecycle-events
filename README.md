@@ -49,6 +49,22 @@ python scripts/measure.py
             +----------------------+
                        |
               subscription state
+
+  the same events, the other way out. nothing produces to the topic yet
+
+            +----------------------+
+            | Kafka sink           |   one row per delivery, no dedupe
+            | record_content       |   record_metadata beside it
+            +----------+-----------+
+                       |
+            +----------v-----------+
+            | stg_subscription     |   one row per event id. the thing
+            |   _events            |   that refuses a repeat lives here
+            +----------+-----------+
+                       |
+            +----------v-----------+
+            | subscription_state   |   the same fold, in SQL
+            +----------------------+
 ```
 
 `subevents/signature.py` is the only part that touches the secret. It parses the header,
@@ -65,7 +81,7 @@ can dedupe or a ledger row for an event nobody stored.
 whatever order the log hands them over and sorts them on fields the events carry, which is
 the only reason a shuffled delivery can land on the same answer as a clean one.
 
-## Measured on 2026-11-20
+## Measured on 2026-11-21
 
 Python 3.10.12 on this machine. Every number below is printed by `scripts/measure.py` and
 `tests/test_readme.py` fails if one of them drifts.
@@ -88,6 +104,13 @@ outcomes a wrong decode changes  11
 schema refuses            5
 acknowledged and nonconforming   0
 configuration rules       10 of 10
+sink rules                12 of 12
+warehouse rules           8 of 8
+connector defaults read   16
+pages disagree about      2
+defaults set by version   4
+warehouse names created   8
+warehouse names spent     8
 ledgers at which nothing is refused  4
 state digests across every split     1
 ```
@@ -200,8 +223,8 @@ python3 -m pytest -q
 ```
 
 ```
-231 tests collected
-230 passed, 1 skipped
+287 tests collected
+286 passed, 1 skipped
 ```
 
 The skip is deliberate and it is counted. One fixture in the corpus is signed bytes that
@@ -363,6 +386,139 @@ There is an eleventh planted case and it is not a rule. It misspells an attribut
 which terraform has to refuse. A manifest reporting that validate caught nothing looks the
 same whether validate is discerning or whether it never ran.
 
+## Into the warehouse, measured on 2026-11-21
+
+`connector/snowflake-sink.json` is the Kafka Connect configuration for the Snowflake sink
+running Snowpipe Streaming. `infra-snowflake/` creates the database and its three schemas. It
+also creates the warehouse, the roles and the service user the sink
+authenticates as. `dbt/` reconstructs
+subscription state in SQL over what the sink lands. **None of it has been applied**, for
+the same reason as `infra/`. There is no Snowflake account behind this repository.
+
+### The sink does not deduplicate, so the ledger moved
+
+The measurement above says the sqlite ledger refuses nothing once there are four of it. The
+answer turned out not to be a shared cache. It is that there is exactly one warehouse.
+
+The sink's exactly once guarantee is about Kafka offsets rather than about Stripe event
+ids. A retried delivery is a new offset carrying an id the table has already seen, so every
+copy lands. 1,627 deliveries become 1,627 rows and `stg_subscription_events` returns 1,501.
+Two copies of one id are ordered by the Kafka partition and the offset. That is a real
+total order over deliveries and it says nothing about which copy Stripe sent first.
+
+### The state fold, written twice
+
+`subevents/state.py` folds the log in Python. `dbt/models/marts/subscription_state.sql`
+folds it in SQL. The second one exists because the first one runs where the handler runs,
+and a platform whose only reconstruction is in its handler has nothing running in the
+warehouse at all.
+
+```
+export SUBEVENTS_DUCKDB=/tmp/subevents.duckdb
+python scripts/warehouse.py
+```
+
+```
+landed records            1627
+distinct event ids        1501
+subscriptions in python   200
+subscriptions in sql      200
+subscriptions disagreeing 0
+folds agree               yes
+fields disagreeing        {}
+staging rows              1501
+arrival control disagrees 102
+flat rank control differs 61
+probe ties left to the id 28
+probe subs disagreeing    0
+dbt nodes                 {'pass': 13, 'success': 5}
+resolved on duckdb        5 models, exit 0
+resolved on snowflake     5 models, exit 0
+```
+
+The two answers are byte identical over all 200 subscriptions. One sha256 either side.
+
+That is a clean result on the first attempt, which is also what a comparison of one answer
+against itself looks like. So there are two controls.
+
+The first folds the same events in arrival order on the Python side. Arrival order was
+measured as wrong for 102 of 200 subscriptions on 2026-11-19 and the comparator reports
+exactly 102 from a different code path.
+
+The second rebuilds the models with every event type at one rank. Something has to move,
+or the models are not reading the precedence seed at all. 61 subscriptions move and **the
+only field that moves is `ambiguous_seconds`**. So the ordering rule that changes nothing
+when inverted also changes nothing when flattened. The only thing it feeds on this corpus
+is the field whose job is to report that the answer was arbitrary.
+
+A third arm plants seconds holding two events of one rank, because on the published corpus
+the sort on the event id decides nothing and the comparison grades it not at all. On that
+arm the id breaks 28 ties and the two folds still agree.
+
+### Four files name the same objects and nothing read more than one
+
+One tool creates these objects and three others spend them. `terraform validate` grades the
+configuration against the provider schema and never opens the sink configuration. A dbt
+parse resolves a target without connecting, so a warehouse that does not exist resolves
+exactly like one that does. Neither tool is broken. The join is simply nobody's job.
+
+`subevents/names.py` runs it in both directions over 8 names created and 8 spent. Each
+direction carries a list of deliberate exceptions with a reason, and an entry in either
+list that no longer has that status fails as well.
+
+It found a defect on the day it was written. dbt appends a model's configured schema to the
+profile's, so a profile schema of `ANALYTICS` and a model schema of `STAGING` resolve to
+`ANALYTICS_STAGING`. Nothing complains about that. This configuration creates no such
+schema and the transforming role holds no `CREATE SCHEMA`, so the first real run would have
+failed on a name that appears in no file. `dbt/macros/generate_schema_name.sql` makes the
+configured schema the whole name.
+
+The interesting exception runs the other way. The sink reads its user name from a Connect
+config provider along with the private key, so the one identifier nothing here can
+reconcile is the one the sink authenticates as. Externalising a secret externalises the
+name sitting beside it.
+
+### What the sink does if you leave a line out
+
+16 defaults were read off four vendor pages and each one is recorded with the sentence that
+states it and the page it came from. A quote has to contain the value it is evidence for,
+which is what stops a quote being picked for sounding good.
+
+The one worth the day is that `snowflake.ingestion.method` defaults to `SNOWPIPE`. Every
+other property in that file reads like a streaming configuration and one omitted line turns
+the whole thing into batch loading through an internal stage, with no error anywhere.
+
+Two properties have different documented defaults on two pages of the same documentation
+set. `buffer.flush.time` is 10 on the streaming page and 120 on the install page.
+`buffer.size.bytes` is 20000000 on one and 5000000 on the other. Four more depend on which
+connector release the cluster happens to be running. A configuration assembled from two
+pages is therefore resting on which page somebody opened. Every contested property here is
+either stated outright or sits in a list of deliberate omissions with a reason.
+
+The install page's own sample configuration is incompatible with streaming. It sets
+`value.converter` to a Snowflake converter and the streaming page says Snowflake converters
+are not supported there. A reader starts at the sample and switches the ingestion method on
+the other page, and nothing between the two mentions it.
+
+### What terraform grades in the warehouse module
+
+`terraform fmt` and `terraform validate` both pass on `infra-snowflake/` and say nothing
+about any of the 8 rules in `subevents/warehouse_rules.py`. Three of those came out of
+`terraform providers schema -json` rather than out of a guide.
+
+`strict_privilege_management` on a grant defaults to false, and the provider's own
+description says a grant with it off is only concerned with the privileges the
+configuration names. So a privilege somebody grants by hand survives every apply and the
+file still reads like the whole picture. Every grant here sets it. The same description
+says the first apply after setting it plans no removals, so turning it on costs two
+applies to mean anything.
+
+The landing table is declared nowhere and that is deliberate. The sink creates it on the
+first delivery and the default role of the user in the sink configuration becomes its
+owner, which is the vendor's sentence rather than a reading of one. That is also why the
+service user declares a default role. Declaring the table here would be two owners for one
+object.
+
 ## Known limitations
 
 - **Nothing has run against Stripe.** The fixtures are signed with the documented algorithm
@@ -408,6 +564,22 @@ same whether validate is discerning or whether it never ran.
 - **The gateway throttle numbers are a guess.** 200 burst and 500 a second. Nothing here
   has measured an arrival rate, and the ceiling is there to stop a bill rather than to
   shape traffic.
+- **Nothing in `infra-snowflake/` has been applied either.** `terraform fmt` and
+  `terraform validate` are the whole verification story there too. No grant has been
+  created, so the claim that the minimum privilege set is enough rests on the vendor's
+  page rather than on a role that failed without one.
+- **No record has reached the sink.** The connector configuration is graded by rules over
+  the file. Kafka Connect has a validate endpoint and reaching it needs a running worker
+  and a reachable account, so nothing here has been through it.
+- **The warehouse models ran on duckdb and not on Snowflake.** The SQL is written once and
+  the dialect sits in one macro, and `dbt parse` against the Snowflake target resolves the
+  relations the configuration creates. A parse is not an execution. No Snowflake SQL in
+  this repository has run.
+- **The comparison is over the generated corpus.** Two folds agreeing on 200 generated
+  subscriptions is evidence about the rules they share and not about Stripe.
+- **Nothing drops a landed record.** The staging model deduplicates on read, so the
+  landing table grows with every retry forever. A real deployment needs a retention
+  window on it and there is none.
 - **The fixture keys are not Stripe shaped, on purpose.** See below. A real deployment
   sets `SUBEVENTS_WEBHOOK_SECRETS` and a deployment that forgets gets keys that cannot
   verify anything Stripe sent, which fails on the first delivery rather than quietly

@@ -31,7 +31,7 @@ import shard  # noqa: E402
 
 LIVE_SECRET, ROTATED_SECRET = config.FIXTURE_SECRETS
 
-MEASURED_ON = "2026-11-20"
+MEASURED_ON = "2026-11-21"
 
 
 def fixture_figures() -> dict:
@@ -246,6 +246,45 @@ def infra_figures() -> dict:
     }
 
 
+def connector_figures() -> dict:
+    """The sink configuration, its rules and the defaults it rests on."""
+    from subevents import connector_rules
+    from subevents import connector_semantics
+
+    findings = connector_rules.run()
+    return {
+        "rules": len(findings),
+        "rules_passing": sum(1 for finding in findings if finding.ok),
+        "defaults_read": len(connector_semantics.DEFAULTS),
+        "pages_read": len(connector_semantics.SOURCES),
+        "defaults_two_pages_disagree_about": sorted(connector_semantics.conflicting_defaults()),
+        "defaults_that_depend_on_the_version": sorted(
+            connector_semantics.version_dependent_defaults()
+        ),
+        "deliberate_omissions": sorted(connector_rules.DELIBERATELY_AT_THE_DEFAULT),
+        "details": {finding.rule: finding.detail for finding in findings},
+    }
+
+
+def warehouse_figures() -> dict:
+    """The Snowflake module's rules and the name reconciliation over four files."""
+    from subevents import names
+    from subevents import warehouse_rules
+
+    rules = warehouse_rules.run()
+    reconciliation = names.run()
+    return {
+        "rules": len(rules),
+        "rules_passing": sum(1 for finding in rules if finding.ok),
+        "names_created": len(names.created()),
+        "names_spent": len(names.spent()),
+        "spent_and_created_elsewhere": sorted(str(n) for n in names.SPENT_AND_NOT_CREATED),
+        "created_and_spent_nowhere": sorted(str(n) for n in names.CREATED_AND_NOT_SPENT),
+        "reconciliation_rules_passing": sum(1 for finding in reconciliation if finding.ok),
+        "details": {finding.rule: finding.detail for finding in rules + reconciliation},
+    }
+
+
 def determinism_figures() -> dict:
     """Two generator runs on one seed have to produce identical bytes."""
     import hashlib
@@ -293,6 +332,8 @@ def main(argv=None) -> None:
         "schema": schema_figures(),
         "ledger": ledger_figures(),
         "infra": infra_figures(),
+        "connector": connector_figures(),
+        "warehouse": warehouse_figures(),
     }
 
     os.makedirs(out_dir, exist_ok=True)
@@ -328,7 +369,16 @@ def main(argv=None) -> None:
     print(f"outcomes a wrong decode changes  {gate['outcomes_changed_by_ignoring_the_flag']}")
     print(f"schema refuses            {sch['refused_by_the_schema']}")
     print(f"acknowledged and nonconforming   {sch['acknowledged_and_nonconforming']}")
+    con = manifest["connector"]
+    war = manifest["warehouse"]
     print(f"configuration rules       {inf['rules_passing']} of {inf['rules']}")
+    print(f"sink rules                {con['rules_passing']} of {con['rules']}")
+    print(f"warehouse rules           {war['rules_passing']} of {war['rules']}")
+    print(f"connector defaults read   {con['defaults_read']}")
+    print(f"pages disagree about      {len(con['defaults_two_pages_disagree_about'])}")
+    print(f"defaults set by version   {len(con['defaults_that_depend_on_the_version'])}")
+    print(f"warehouse names created   {war['names_created']}")
+    print(f"warehouse names spent     {war['names_spent']}")
     print(f"ledgers at which nothing is refused  {_first_zero(led)}")
     print(f"state digests across every split     {led['distinct_state_digests']}")
 
