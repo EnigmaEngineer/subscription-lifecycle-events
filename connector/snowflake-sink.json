@@ -1,0 +1,36 @@
+{
+  "name": "subscription-events-sink",
+  "config": {
+    "connector.class": "com.snowflake.kafka.connector.SnowflakeSinkConnector",
+    "tasks.max": "4",
+    "topics": "subscription-events",
+    "snowflake.topic2table.map": "subscription-events:RAW_SUBSCRIPTION_EVENTS",
+
+    "snowflake.ingestion.method": "SNOWPIPE_STREAMING",
+    "snowflake.streaming.enable.single.buffer": "true",
+    "snowflake.streaming.max.client.lag": "5",
+    "buffer.size.bytes": "20000000",
+    "enable.streaming.client.optimization": "true",
+    "snowflake.enable.schematization": "false",
+    "behavior.on.null.values": "IGNORE",
+
+    "snowflake.url.name": "${file:/opt/kafka/secrets/snowflake.properties:snowflake_url}",
+    "snowflake.user.name": "${file:/opt/kafka/secrets/snowflake.properties:snowflake_user}",
+    "snowflake.private.key": "${file:/opt/kafka/secrets/snowflake.properties:snowflake_private_key}",
+    "snowflake.private.key.passphrase": "${file:/opt/kafka/secrets/snowflake.properties:snowflake_private_key_passphrase}",
+    "snowflake.database.name": "SUBEVENTS",
+    "snowflake.schema.name": "RAW",
+    "snowflake.role.name": "KAFKA_CONNECTOR_ROLE",
+
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+
+    "errors.tolerance": "ALL",
+    "errors.log.enable": "true",
+    "errors.log.include.messages": "false",
+    "errors.deadletterqueue.topic.name": "subscription-events-dlq",
+    "errors.deadletterqueue.topic.replication.factor": "3",
+    "errors.deadletterqueue.context.headers.enable": "true"
+  }
+}
